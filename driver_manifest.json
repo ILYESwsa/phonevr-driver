@@ -1,0 +1,6 @@
+{
+  "name": "PhoneVR",
+  "directory": "phonevr",
+  "resourceOnly": false,
+  "hmd_presence": [ ".*" ]
+}

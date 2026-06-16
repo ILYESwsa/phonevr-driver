@@ -1,0 +1,43 @@
+name: Build PC Driver (DLL)
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build-driver:
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download OpenVR SDK
+        shell: pwsh
+        run: |
+          Invoke-WebRequest -Uri "https://github.com/ValveSoftware/openvr/archive/refs/tags/v2.5.1.zip" -OutFile openvr.zip
+          Expand-Archive openvr.zip -DestinationPath .
+          Rename-Item "openvr-2.5.1" "openvr-sdk"
+          Move-Item "openvr-sdk" "pc-driver/openvr-sdk"
+
+      - name: Configure CMake
+        run: cmake -B build -S pc-driver -DCMAKE_BUILD_TYPE=Release -A x64
+
+      - name: Build
+        run: cmake --build build --config Release
+
+      - name: Collect driver files
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path dist/phonevr/bin/win64
+          Copy-Item build/Release/driver_phonevr.dll dist/phonevr/bin/win64/
+          Copy-Item pc-driver/driver_manifest.json dist/phonevr/
+
+      - name: Upload driver artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: phonevr-driver-win64
+          path: dist/
+          retention-days: 30
