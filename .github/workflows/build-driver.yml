@@ -18,33 +18,32 @@ jobs:
         shell: pwsh
         run: |
           Invoke-WebRequest -Uri "https://github.com/ValveSoftware/openvr/archive/refs/tags/v2.5.1.zip" -OutFile openvr.zip
-          Expand-Archive openvr.zip -DestinationPath .
-          Rename-Item "openvr-2.5.1" "openvr-sdk"
-          Move-Item "openvr-sdk" "pc-driver/openvr-sdk"
+          Expand-Archive openvr.zip -DestinationPath ./openvr-extracted
+          # The zip extracts to openvr-extracted/openvr-2.5.1/
+          $extracted = Get-ChildItem ./openvr-extracted | Select-Object -First 1
+          Write-Host "Extracted to: $($extracted.FullName)"
+          Copy-Item -Recurse $extracted.FullName ./openvr-sdk
+          Write-Host "OpenVR SDK ready at ./openvr-sdk"
+          dir ./openvr-sdk
 
       - name: Setup vcpkg + x264
         shell: pwsh
         run: |
-          git clone https://github.com/microsoft/vcpkg.git
+          git clone https://github.com/microsoft/vcpkg.git --depth=1
           cd vcpkg
           .\bootstrap-vcpkg.bat -disableMetrics
-          .\vcpkg install x264:x64-windows
-          echo "VCPKG_ROOT=$PWD" >> $env:GITHUB_ENV
-
-      - name: Download x264 DLL for runtime
-        shell: pwsh
-        run: |
-          # Copy libx264.dll so it ships with the driver
-          $x264dll = Get-ChildItem -Path "vcpkg/installed/x64-windows/bin" -Filter "*.dll" |
-                     Where-Object { $_.Name -like "*x264*" } | Select-Object -First 1
-          if ($x264dll) {
-            Copy-Item $x264dll.FullName "pc-driver/x264.dll"
-          }
+          .\vcpkg install x264:x64-windows --no-binarycaching
+          cd ..
+          echo "VCPKG_ROOT=$PWD\vcpkg" >> $env:GITHUB_ENV
 
       - name: Configure CMake
+        shell: pwsh
         run: |
-          cmake -B build -S pc-driver -DCMAKE_BUILD_TYPE=Release -A x64 ^
-            -DCMAKE_TOOLCHAIN_FILE=vcpkg/scripts/buildsystems/vcpkg.cmake
+          cmake -B build -S . `
+            -DCMAKE_BUILD_TYPE=Release `
+            -A x64 `
+            -DOPENVR_SDK="$PWD/openvr-sdk" `
+            -DCMAKE_TOOLCHAIN_FILE="$PWD/vcpkg/scripts/buildsystems/vcpkg.cmake"
 
       - name: Build
         run: cmake --build build --config Release
@@ -55,15 +54,14 @@ jobs:
           New-Item -ItemType Directory -Force -Path dist/phonevr/bin/win64
           New-Item -ItemType Directory -Force -Path dist/phonevr/resources/input
 
-          Copy-Item build/Release/driver_phonevr.dll    dist/phonevr/bin/win64/
-          Copy-Item pc-driver/driver_manifest.json       dist/phonevr/
-          Copy-Item pc-driver/install_driver.bat         dist/
-          Copy-Item pc-driver/resources/input/*.json     dist/phonevr/resources/input/
+          Copy-Item build/Release/driver_phonevr.dll   dist/phonevr/bin/win64/
+          Copy-Item driver_manifest.json                dist/phonevr/
+          Copy-Item install_driver.bat                  dist/
+          Copy-Item resources/input/*.json              dist/phonevr/resources/input/
 
-          # Bundle x264 DLL if present (for CPU fallback)
-          if (Test-Path "pc-driver/x264.dll") {
-            Copy-Item "pc-driver/x264.dll" dist/phonevr/bin/win64/
-          }
+          # Bundle x264 DLL for CPU fallback
+          $x264 = Get-ChildItem -Path "vcpkg/installed/x64-windows/bin" -Filter "*x264*.dll" -ErrorAction SilentlyContinue | Select-Object -First 1
+          if ($x264) { Copy-Item $x264.FullName dist/phonevr/bin/win64/ }
 
       - name: Upload driver artifact
         uses: actions/upload-artifact@v4
