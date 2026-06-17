@@ -1,0 +1,41 @@
+{
+  "jsonid": "bindings",
+  "controller_type": "phonevr_controller",
+  "name": "PhoneVR Default Bindings",
+  "bindings": {
+    "/actions/default": {
+      "sources": [
+        {
+          "path": "/user/hand/right/input/trigger",
+          "mode": "trigger",
+          "inputs": {
+            "click": { "output": "/actions/default/in/InteractUI" },
+            "value": { "output": "/actions/default/in/Squeeze" }
+          }
+        },
+        {
+          "path": "/user/hand/left/input/trigger",
+          "mode": "trigger",
+          "inputs": {
+            "click": { "output": "/actions/default/in/InteractUI" },
+            "value": { "output": "/actions/default/in/Squeeze" }
+          }
+        },
+        {
+          "path": "/user/hand/right/input/joystick",
+          "mode": "joystick",
+          "inputs": {
+            "position": { "output": "/actions/default/in/Move" }
+          }
+        },
+        {
+          "path": "/user/hand/left/input/joystick",
+          "mode": "joystick",
+          "inputs": {
+            "position": { "output": "/actions/default/in/Move" }
+          }
+        }
+      ]
+    }
+  }
+}

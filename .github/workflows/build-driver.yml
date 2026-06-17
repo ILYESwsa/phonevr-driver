@@ -22,18 +22,48 @@ jobs:
           Rename-Item "openvr-2.5.1" "openvr-sdk"
           Move-Item "openvr-sdk" "pc-driver/openvr-sdk"
 
+      - name: Setup vcpkg + x264
+        shell: pwsh
+        run: |
+          git clone https://github.com/microsoft/vcpkg.git
+          cd vcpkg
+          .\bootstrap-vcpkg.bat -disableMetrics
+          .\vcpkg install x264:x64-windows
+          echo "VCPKG_ROOT=$PWD" >> $env:GITHUB_ENV
+
+      - name: Download x264 DLL for runtime
+        shell: pwsh
+        run: |
+          # Copy libx264.dll so it ships with the driver
+          $x264dll = Get-ChildItem -Path "vcpkg/installed/x64-windows/bin" -Filter "*.dll" |
+                     Where-Object { $_.Name -like "*x264*" } | Select-Object -First 1
+          if ($x264dll) {
+            Copy-Item $x264dll.FullName "pc-driver/x264.dll"
+          }
+
       - name: Configure CMake
-        run: cmake -B build -S pc-driver -DCMAKE_BUILD_TYPE=Release -A x64
+        run: |
+          cmake -B build -S pc-driver -DCMAKE_BUILD_TYPE=Release -A x64 ^
+            -DCMAKE_TOOLCHAIN_FILE=vcpkg/scripts/buildsystems/vcpkg.cmake
 
       - name: Build
         run: cmake --build build --config Release
 
-      - name: Collect driver files
+      - name: Bundle driver folder
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force -Path dist/phonevr/bin/win64
-          Copy-Item build/Release/driver_phonevr.dll dist/phonevr/bin/win64/
-          Copy-Item pc-driver/driver_manifest.json dist/phonevr/
+          New-Item -ItemType Directory -Force -Path dist/phonevr/resources/input
+
+          Copy-Item build/Release/driver_phonevr.dll    dist/phonevr/bin/win64/
+          Copy-Item pc-driver/driver_manifest.json       dist/phonevr/
+          Copy-Item pc-driver/install_driver.bat         dist/
+          Copy-Item pc-driver/resources/input/*.json     dist/phonevr/resources/input/
+
+          # Bundle x264 DLL if present (for CPU fallback)
+          if (Test-Path "pc-driver/x264.dll") {
+            Copy-Item "pc-driver/x264.dll" dist/phonevr/bin/win64/
+          }
 
       - name: Upload driver artifact
         uses: actions/upload-artifact@v4

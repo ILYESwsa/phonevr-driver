@@ -1,0 +1,48 @@
+{
+  "jsonid": "input_profile",
+  "controller_type": "phonevr_controller",
+  "input_bindingui_mode": "controller_handed",
+  "input_source": {
+    "/input/trigger": {
+      "type": "trigger",
+      "binding_image_point": [246, 152],
+      "order": 1
+    },
+    "/input/grip": {
+      "type": "trigger",
+      "binding_image_point": [68, 200],
+      "order": 2
+    },
+    "/input/joystick": {
+      "type": "joystick",
+      "binding_image_point": [160, 220],
+      "order": 3
+    },
+    "/input/a": {
+      "type": "button",
+      "binding_image_point": [290, 195],
+      "order": 4
+    },
+    "/input/b": {
+      "type": "button",
+      "binding_image_point": [318, 166],
+      "order": 5
+    },
+    "/input/x": {
+      "type": "button",
+      "binding_image_point": [290, 195],
+      "order": 4
+    },
+    "/input/y": {
+      "type": "button",
+      "binding_image_point": [318, 166],
+      "order": 5
+    }
+  },
+  "default_bindings": [
+    {
+      "controller_type": "phonevr_controller",
+      "binding_url": "phonevr_controller_bindings.json"
+    }
+  ]
+}
